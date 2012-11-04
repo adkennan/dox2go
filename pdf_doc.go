@@ -1,3 +1,32 @@
+/*
+* dox2go - A document generating library for go.
+*
+* Copyright 2011 Andrew Kennan. All rights reserved.
+*
+* Redistribution and use in source and binary forms, with or without modification, are
+* permitted provided that the following conditions are met:
+*
+* 1. Redistributions of source code must retain the above copyright notice, this list of
+* conditions and the following disclaimer.
+*
+* 2. Redistributions in binary form must reproduce the above copyright notice, this list
+* of conditions and the following disclaimer in the documentation and/or other materials
+* provided with the distribution.
+*
+* THIS SOFTWARE IS PROVIDED BY ANDREW KENNAN ''AS IS'' AND ANY EXPRESS OR IMPLIED
+* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+* FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL ANDREW KENNAN OR
+* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+* ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+* ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*
+* The views and conclusions contained in the software and documentation are those of the
+* authors and should not be interpreted as representing official policies, either expressed
+* or implied, of Andrew Kennan.
+ */
 package dox2go
 
 import (
@@ -81,7 +110,7 @@ func (a pdfArray) String() string {
 
 type pdfPage struct {
 	id     int
-	ps     PageSize
+	size   Point
 	po     PageOrientation
 	pu     Unit
 	parent pdfObj
@@ -115,10 +144,23 @@ func (p *pdfPage) WriteTo(w io.Writer) (n int64, err error) {
 		fs["F"+strconv.Itoa(f.Id())] = refObj(f)
 	}
 
+	var width float64
+	var height float64
+
+	if p.po == PO_Portrait {
+		width = p.size.X
+		height = p.size.Y
+	} else {
+		width = p.size.Y
+		height = p.size.X
+	}
+
 	n2, err = fmt.Fprint(w, pdfDict{
-		"Type":     pn(p.Type()),
-		"Parent":   refObj(p.parent),
-		"MediaBox": &pdfArray{0, 0, 612, 792},
+		"Type":   pn(p.Type()),
+		"Parent": refObj(p.parent),
+		"MediaBox": &pdfArray{0, 0,
+			ConvertUnit(width, p.pu, U_PT),
+			ConvertUnit(height, p.pu, U_PT)},
 		"Contents": refObj(p.c),
 		"Resources": pdfDict{
 			"Font": fs,
@@ -524,10 +566,10 @@ func NewPdfDoc(w io.Writer) Document {
 	return doc
 }
 
-func (doc *pdfDoc) CreatePage(pu Unit, ps PageSize, po PageOrientation) Page {
+func (doc *pdfDoc) CreatePage(pu Unit, size Point, po PageOrientation) Page {
 	p := &pdfPage{
 		len(doc.objs) + 1,
-		ps,
+		size,
 		po,
 		pu,
 		doc.pages,
