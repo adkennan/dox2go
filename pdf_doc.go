@@ -32,6 +32,7 @@ package dox2go
 import (
 	"bytes"
 	"fmt"
+	"image"
 	"io"
 	"strconv"
 )
@@ -144,6 +145,11 @@ func (p *pdfPage) WriteTo(w io.Writer) (n int64, err error) {
 		fs["F"+strconv.Itoa(f.Id())] = refObj(f)
 	}
 
+	xos := make(pdfDict)
+	for key, xo := range p.sfc.xobjs {
+		xos[key] = refObj(xo)
+	}
+
 	var width float64
 	var height float64
 
@@ -163,7 +169,8 @@ func (p *pdfPage) WriteTo(w io.Writer) (n int64, err error) {
 			ConvertUnit(height, p.pu, U_PT)},
 		"Contents": refObj(p.c),
 		"Resources": pdfDict{
-			"Font": fs,
+			"Font":    fs,
+			"XObject": xos,
 		},
 	})
 	if err != nil {
@@ -183,6 +190,7 @@ func (p *pdfPage) Surface() Surface {
 			false,
 			make([]*pdfTypeFace, 0, 4),
 			nil,
+			make(map[string]pdfObj),
 		}
 	}
 	return p.sfc
@@ -598,6 +606,16 @@ func (doc *pdfDoc) CreateFont(name string, fs FontStyle, size float64) Font {
 	return &pdfFont{tf, size}
 }
 
+func (doc *pdfDoc) CreateImage(src image.Image) Image {
+
+	m := &pdfImageMask{len(doc.objs) + 2, 0, 0, bytes.Buffer{}}
+	i := &pdfImage{len(doc.objs) + 1, src, m}
+
+	doc.objs = append(doc.objs, i, m)
+
+	return i
+}
+
 func writeXrefEntry(w io.Writer, offset int64) (err error) {
 	_, err = fmt.Fprintf(w, "%010d 00000 n\r\n", offset)
 	return err
@@ -616,6 +634,12 @@ func (doc *pdfDoc) Close() (err error) {
 	}
 
 	n, err = fmt.Fprint(doc.w, "%PDF-1.7\r\n")
+	if err != nil {
+		return err
+	}
+	offset += int64(n)
+
+	n, err = doc.w.Write([]byte{200, 200, 200, 200, 13, 10})
 	if err != nil {
 		return err
 	}

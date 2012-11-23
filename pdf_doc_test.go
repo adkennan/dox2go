@@ -31,6 +31,7 @@ package dox2go
 
 import (
 	"bytes"
+	"image/png"
 	"os"
 	"testing"
 )
@@ -38,7 +39,20 @@ import (
 func TestSimplePage(t *testing.T) {
 	var b bytes.Buffer
 
+	var f, err = os.Open("gologo.png")
+	if err != nil {
+		panic(err)
+	}
+
+	img, err := png.Decode(f)
+	if err != nil {
+		panic(err)
+	}
+
 	d := NewPdfDoc(&b)
+
+	pi := d.CreateImage(img)
+
 	page := d.CreatePage(U_MM, StandardSize(PS_A4, U_MM), PO_Portrait)
 
 	s := page.Surface()
@@ -63,20 +77,22 @@ func TestSimplePage(t *testing.T) {
 	s.PushState()
 	s.Translate(Point{50, 150})
 	s.Skew(1.0, 0.5)
-	s.Text(font, Point{0, 0}, "Hello")
+	s.Text(font, Point{0, 0}, "(Hello\\)")
 	s.PopState()
 
 	font = d.CreateFont(FONT_Times, FS_Regular, 30)
 
 	s.Bg(RGB(100, 100, 100))
-	s.Text(font, Point{101, 129}, "world")
+	s.Text(font, Point{101, 129}, "wor Ƶ ld")
 
-	s.Bg(RGB(0, 200, 255))
-	s.Text(font, Point{100, 130}, "world")
+	s.Image(pi, Point{40, 180}, Size{153, 55})
+
+	//s.Bg(RGB(0, 200, 255))
+	//s.Text(font, Point{100, 130}, "world")
 
 	d.Close()
 
-	f, err := os.Create("tmp.pdf")
+	f, err = os.Create("tmp.pdf")
 	if err != nil {
 		t.Error("Could not create tmp.pdf")
 	}

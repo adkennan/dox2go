@@ -30,9 +30,11 @@
 package dox2go
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"math"
+	"strconv"
 )
 
 type pdfSurface struct {
@@ -41,6 +43,16 @@ type pdfSurface struct {
 	inText   bool
 	fonts    []*pdfTypeFace
 	lastFont *pdfFont
+	xobjs    map[string]pdfObj
+}
+
+func (sfc *pdfSurface) addXObj(o pdfObj) string {
+	key := o.Type() + strconv.Itoa(o.Id())
+	if _, exists := sfc.xobjs[key]; !exists {
+		sfc.xobjs[key] = o
+	}
+
+	return key
 }
 
 func (sfc *pdfSurface) alterMatrix(a, b, c, d, e, f float64) {
@@ -150,7 +162,17 @@ func (sfc *pdfSurface) Fill(path *Path) {
 	fmt.Fprint(sfc.w, "f\r\n")
 }
 
-func (sfc *pdfSurface) Text(f Font, p Point, text string) {
+var charsToEscape = [8]rune{
+	'\n', '\r', '\t', '\b', '\f', '(', ')', '\\',
+}
+
+var escapedChars = [8]byte{
+	'n', 'r', 't', 'b', 'f', '(', ')', '\\',
+}
+
+const escapeChar = byte('\\')
+
+func (sfc *pdfSurface) Text(f Font, at Point, text string) {
 
 	if pf, ok := f.(*pdfFont); ok {
 
@@ -169,11 +191,49 @@ func (sfc *pdfSurface) Text(f Font, p Point, text string) {
 			sfc.fonts = append(sfc.fonts, pf.face)
 		}
 
-		fmt.Fprintf(sfc.w, "%f %f Td\r\n",
-			ConvertUnit(p.X, sfc.u, U_PT),
-			ConvertUnit(p.Y, sfc.u, U_PT))
+		fmt.Fprintf(sfc.w, "%f %f Td\r\n(",
+			ConvertUnit(at.X, sfc.u, U_PT),
+			ConvertUnit(at.Y, sfc.u, U_PT))
 
-		fmt.Fprintf(sfc.w, "(%s) Tj\r\n", text)
+		textBuf := new(bytes.Buffer)
+
+		for _, c := range text {
+			escaped := false
+			for eIx, ec := range charsToEscape {
+				if c == ec {
+					textBuf.WriteByte(escapeChar)
+					textBuf.WriteByte(escapedChars[eIx])
+					escaped = true
+				}
+			}
+
+			if !escaped {
+				textBuf.WriteRune(c)
+			}
+		}
+		if textBuf.Len() > 0 {
+			sfc.w.Write(textBuf.Bytes())
+		}
+
+		fmt.Fprint(sfc.w, ") Tj\r\n")
+	}
+}
+
+func (sfc *pdfSurface) Image(i Image, at Point, size Size) {
+
+	sfc.endText()
+
+	if pi, ok := i.(*pdfImage); ok {
+
+		sfc.PushState()
+		sfc.Translate(at)
+		sfc.Scale(size.W, size.H)
+
+		name := sfc.addXObj(pi)
+
+		fmt.Fprintf(sfc.w, "/%s Do\r\n", name)
+
+		sfc.PopState()
 	}
 }
 

@@ -40,6 +40,17 @@ func (p *Point) ChangeUnit(from Unit, to Unit) Point {
 		ConvertUnit(p.Y, from, to)}
 }
 
+type Size struct {
+	W float64
+	H float64
+}
+
+func (s *Size) ChangeUnit(from Unit, to Unit) Size {
+	return Size{
+		ConvertUnit(s.W, from, to),
+		ConvertUnit(s.H, from, to)}
+}
+
 type Color struct {
 	R uint8
 	G uint8
@@ -83,6 +94,12 @@ type Font interface {
 	Id() int
 	Style() FontStyle
 	Size() float64
+}
+
+type Image interface {
+	Id() int
+	Width() int
+	Height() int
 }
 
 type pathCmdType int32
@@ -147,7 +164,10 @@ type Surface interface {
 	LineCap(capStyle LineCapStyle)
 	LineJoin(joinStyle LineJoinStyle)
 	LinePattern(pattern []float64, phase float64)
-	Text(f Font, p Point, text string)
+
+	Text(f Font, at Point, text string)
+
+	Image(i Image, at Point, size Size)
 
 	Stroke(path *Path)
 	Fill(path *Path)

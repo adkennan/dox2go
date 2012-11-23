@@ -29,6 +29,10 @@
  */
 package dox2go
 
+import (
+	"image"
+)
+
 type PageSize int32
 
 const (
@@ -95,6 +99,8 @@ type Document interface {
 	CreatePage(pu Unit, size Point, po PageOrientation) Page
 
 	CreateFont(name string, fs FontStyle, size float64) Font
+
+	CreateImage(src image.Image) Image
 
 	Close() error
 }
