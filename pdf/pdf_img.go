@@ -1,8 +1,13 @@
-package dox2go
+/*
+* dox2go - A document generating library for go.
+*
+* Copyright 2013 Andrew Kennan. All rights reserved.
+*
+ */
+package pdf
 
 import (
 	"bytes"
-	"fmt"
 	"image"
 	"io"
 )
@@ -30,27 +35,37 @@ func (i *pdfImage) Type() string {
 }
 
 func (i *pdfImage) WriteTo(w io.Writer) (n int64, err error) {
-	n2, err := startObj(i, w)
+	n, err = startObj(i, w)
 	if err != nil {
 		return 0, err
 	}
-	n = int64(n2)
-	d := pdfDict{"Type": pn(i.Type()),
-		"Subtype":          "/Image",
-		"ColorSpace":       "/DeviceRGB",
-		"BitsPerComponent": 8,
-		"Width":            i.Width(),
-		"Height":           i.Height(),
-		"Length":           3 * i.Width() * i.Height(),
-		"SMask":             refObj(i.mask)}
 
-	n2, err = fmt.Fprint(w, d)
-	if err != nil {
-		return n, err
+	dw := dictionaryWriter{w, 0, nil}
+	dw.Start()
+	dw.Name("Type")
+	dw.Name(i.Type())
+	dw.Name("Subtype")
+	dw.Name("Image")
+	dw.Name("ColorSpace")
+	dw.Name("DeviceRGB")
+	dw.Name("BitsPerComponent")
+	dw.Value(8)
+	dw.Name("Width")
+	dw.Value(i.Width())
+	dw.Name("Height")
+	dw.Value(i.Height())
+	dw.Name("Length")
+	dw.Value(3 * i.Width() * i.Height())
+	dw.Name("SMask")
+	dw.Ref(i.mask)
+	dw.End()
+
+	if dw.err != nil {
+		return 0, dw.err
 	}
-	n += int64(n2)
+	n += dw.n
 
-	n2, err = fmt.Fprint(w, "stream\r\n")
+	n2, err := startStream(w)
 	if err != nil {
 		return n, err
 	}
@@ -60,19 +75,19 @@ func (i *pdfImage) WriteTo(w io.Writer) (n int64, err error) {
 	for y := b.Min.Y; y < b.Max.Y; y++ {
 		for x := b.Min.X; x < b.Max.X; x++ {
 			r, g, b, a := i.src.At(x, y).RGBA()
-			n2, err = w.Write([]byte{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)})
+			n3, err := w.Write([]byte{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8)})
 			if err != nil {
 				return n, err
 			}
 			i.mask.content.WriteByte(uint8(a >> 8))
-			n += int64(n2)
+			n += int64(n3)
 		}
 	}
 
 	i.mask.w = i.Width()
 	i.mask.h = i.Height()
 
-	n2, err = fmt.Fprint(w, "\r\nendstream\r\n")
+	n2, err = endStream(w)
 	if err != nil {
 		return n, err
 	}
@@ -99,30 +114,39 @@ func (i *pdfImageMask) Type() string {
 
 func (i *pdfImageMask) WriteTo(w io.Writer) (n int64, err error) {
 
-	n2, err := startObj(i, w)
+	n, err = startObj(i, w)
 	if err != nil {
 		return 0, err
 	}
-	n = int64(n2)
-	d := pdfDict{"Type": pn(i.Type()),
-		"Subtype":          "/Image",
-		"ColorSpace":       "/DeviceGray",
-		"BitsPerComponent": 8,
-		"Width":            i.w,
-		"Height":           i.h,
-		"Length":           i.w * i.h}
 
-	n2, err = fmt.Fprint(w, d)
+	dw := dictionaryWriter{w, 0, nil}
+	dw.Start()
+	dw.Name("Type")
+	dw.Name(i.Type())
+	dw.Name("Subtype")
+	dw.Name("Image")
+	dw.Name("ColorSpace")
+	dw.Name("DeviceGray")
+	dw.Name("BitsPerComponent")
+	dw.Value(8)
+	dw.Name("Width")
+	dw.Value(i.w)
+	dw.Name("Height")
+	dw.Value(i.h)
+	dw.Name("Length")
+	dw.Value(i.w * i.h)
+	dw.End()
+
+	if dw.err != nil {
+		return 0, dw.err
+	}
+	n += dw.n
+
+	n2, err := startStream(w)
 	if err != nil {
 		return n, err
 	}
-	n += int64(n2)
-
-	n2, err = fmt.Fprint(w, "stream\r\n")
-	if err != nil {
-		return n, err
-	}
-	n += int64(n2)
+	n += n2
 
 	n3, err := i.content.WriteTo(w)
 	if err != nil {
@@ -130,7 +154,7 @@ func (i *pdfImageMask) WriteTo(w io.Writer) (n int64, err error) {
 	}
 	n += int64(n3)
 
-	n2, err = fmt.Fprint(w, "\r\nendstream\r\n")
+	n2, err = endStream(w)
 	if err != nil {
 		return n, err
 	}

@@ -1,33 +1,15 @@
 /*
 * dox2go - A document generating library for go.
 *
-* Copyright 2011 Andrew Kennan. All rights reserved.
+* Copyright 2013 Andrew Kennan. All rights reserved.
 *
-* Redistribution and use in source and binary forms, with or without modification, are
-* permitted provided that the following conditions are met:
-*
-* 1. Redistributions of source code must retain the above copyright notice, this list of
-* conditions and the following disclaimer.
-*
-* 2. Redistributions in binary form must reproduce the above copyright notice, this list
-* of conditions and the following disclaimer in the documentation and/or other materials
-* provided with the distribution.
-*
-* THIS SOFTWARE IS PROVIDED BY ANDREW KENNAN ''AS IS'' AND ANY EXPRESS OR IMPLIED
-* WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-* FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL ANDREW KENNAN OR
-* CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-* SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-* ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-* NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-* ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*
-* The views and conclusions contained in the software and documentation are those of the
-* authors and should not be interpreted as representing official policies, either expressed
-* or implied, of Andrew Kennan.
  */
 package dox2go
+
+import (
+	"fmt"
+	"math"
+)
 
 type Point struct {
 	X float64
@@ -102,51 +84,155 @@ type Image interface {
 	Height() int
 }
 
-type pathCmdType int32
+type PathCmdType uint8
 
 const (
-	moveCmdType pathCmdType = iota
-	lineCmdType
-	curveCmdType
-	rectCmdType
-	closeCmdType
+	MoveCmdType  PathCmdType = 0xFF
+	LineCmdType              = 0xFE
+	CurveCmdType             = 0xFD
+	RectCmdType              = 0xFC
+	ArcCmdType               = 0xFB
+	CloseCmdType             = 0xFA
 )
 
-type pathCmdPoints [3]Point
-
-type pathCmd struct {
-	t pathCmdType
-	p pathCmdPoints
-}
-
 type Path struct {
-	elements []pathCmd
+	elements []byte
 }
 
 func NewPath() *Path {
-	p := new(Path)
-	p.elements = make([]pathCmd, 0, 8)
-	return p
+	return &Path{make([]byte, 0, 16)}
+}
+
+func (path *Path) ensureCap(n int) {
+	if len(path.elements)+n >= cap(path.elements) {
+		newEls := make([]byte, len(path.elements), len(path.elements)*2)
+		copy(newEls, path.elements)
+		path.elements = newEls
+	}
+}
+
+func (path *Path) writeUint8(val uint8) {
+	path.ensureCap(1)
+	path.elements = append(path.elements, val)
+}
+
+func (path *Path) writeCmdType(val PathCmdType) {
+	path.writeUint8(uint8(val))
+}
+
+func (path *Path) writeFloat64(val float64) {
+
+	path.ensureCap(8)
+
+	bits := math.Float64bits(val)
+	for ix := 0; ix < 8; ix++ {
+		path.elements = append(path.elements, byte(bits&0xFF))
+		bits >>= 8
+	}
 }
 
 func (path *Path) Move(to Point) {
-	path.elements = append(path.elements, pathCmd{moveCmdType, pathCmdPoints{to}})
+	path.writeCmdType(MoveCmdType)
+	path.writeFloat64(to.X)
+	path.writeFloat64(to.Y)
 }
 
 func (path *Path) Line(to Point) {
-	path.elements = append(path.elements, pathCmd{lineCmdType, pathCmdPoints{to}})
+	path.writeCmdType(LineCmdType)
+	path.writeFloat64(to.X)
+	path.writeFloat64(to.Y)
 }
 
 func (path *Path) Curve(control1 Point, control2 Point, to Point) {
-	path.elements = append(path.elements, pathCmd{curveCmdType, pathCmdPoints{control1, control2, to}})
+	path.writeCmdType(CurveCmdType)
+	path.writeFloat64(control1.X)
+	path.writeFloat64(control1.Y)
+	path.writeFloat64(control2.X)
+	path.writeFloat64(control2.Y)
+	path.writeFloat64(to.X)
+	path.writeFloat64(to.Y)
 }
 
 func (path *Path) Rect(from Point, to Point) {
-	path.elements = append(path.elements, pathCmd{rectCmdType, pathCmdPoints{from, to}})
+	path.writeCmdType(RectCmdType)
+	path.writeFloat64(from.X)
+	path.writeFloat64(from.Y)
+	path.writeFloat64(to.X)
+	path.writeFloat64(to.Y)
+}
+
+func (path *Path) Arc(center Point, radius, start, sweep float64) {
+	path.writeCmdType(ArcCmdType)
+	path.writeFloat64(center.X)
+	path.writeFloat64(center.Y)
+	path.writeFloat64(radius)
+	path.writeFloat64(start)
+	path.writeFloat64(sweep)
 }
 
 func (path *Path) Close() {
-	path.elements = append(path.elements, pathCmd{closeCmdType, pathCmdPoints{}})
+	path.writeCmdType(CloseCmdType)
+}
+
+func (path *Path) Reader() PathReader {
+	return &pathReader{path.elements, 0}
+}
+
+type PathReader interface {
+	ReadCommandType() (cmdType PathCmdType, ok bool)
+	ReadFloat64() (val float64)
+	ReadUint8() (val uint8)
+	Dump()
+}
+
+type pathReader struct {
+	elements []byte
+	pos      int
+}
+
+func (p *pathReader) ensureCap(n int) bool {
+	return p.pos+n <= len(p.elements)
+}
+
+func (p *pathReader) ReadCommandType() (cmdType PathCmdType, ok bool) {
+	ok = p.ensureCap(1)
+	if ok {
+		cmdType = PathCmdType(p.elements[p.pos])
+		p.pos++
+	}
+	return
+}
+
+func (p *pathReader) ReadFloat64() (val float64) {
+	if !p.ensureCap(8) {
+		panic("End of buffer!")
+	}
+
+	var bits uint64
+	for ix := 0; ix < 8; ix++ {
+		bits |= uint64(p.elements[p.pos+ix]) << uint32(ix*8)
+	}
+
+	val = math.Float64frombits(bits)
+	p.pos += 8
+	return
+}
+
+func (p *pathReader) ReadUint8() (val uint8) {
+	if !p.ensureCap(1) {
+		panic("End of buffer!")
+	}
+
+	val = p.elements[p.pos]
+	p.pos++
+	return val
+}
+
+func (p *pathReader) Dump() {
+	for _, v := range p.elements {
+		fmt.Printf("%0x ", v)
+	}
+	fmt.Println("")
 }
 
 type Surface interface {
