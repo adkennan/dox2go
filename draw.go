@@ -4,6 +4,7 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
 package dox2go
 
 import (
@@ -11,28 +12,52 @@ import (
 	"math"
 )
 
+// Point describes a position in a 2-dimensional plane.
+//
+// X is the horizontal coordinate.
+//
+// Y is the vertical coordinate.
 type Point struct {
 	X float64
 	Y float64
 }
 
+// ChangeUnit returns a new Point with its coordinates
+// converted to a different unit.
 func (p *Point) ChangeUnit(from Unit, to Unit) Point {
 	return Point{
 		ConvertUnit(p.X, from, to),
 		ConvertUnit(p.Y, from, to)}
 }
 
+// Size describes a size in a 2-dimensional plane.
+//
+// W is the width of the size.
+//
+// H is the height of the size.
 type Size struct {
 	W float64
 	H float64
 }
 
+// ChangeUnit returns a new Size with its dimensions
+// onverted to a different unit.
 func (s *Size) ChangeUnit(from Unit, to Unit) Size {
 	return Size{
 		ConvertUnit(s.W, from, to),
 		ConvertUnit(s.H, from, to)}
 }
 
+// Color describes a color with red, green and blue
+// components as well as a transparency level.
+//
+// R is the red component of the color.
+//
+// G is the green component of the color.
+//
+// B is the blue component of the color.
+//
+// A is the alpha, or transparency, of the color.
 type Color struct {
 	R uint8
 	G uint8
@@ -40,52 +65,83 @@ type Color struct {
 	A uint8
 }
 
+// RGB returns a Color based on the supplied r, g and b components.
 func RGB(r uint8, g uint8, b uint8) Color {
 	return Color{r, g, b, 255}
 }
 
+// RGB returns a Color based on the supplied r, g, b and transpareny
+// components.
 func RGBA(r uint8, g uint8, b uint8, a uint8) Color {
 	return Color{r, g, b, a}
 }
 
+// LineCapStyle describes the types of line endings available.
 type LineCapStyle int32
 
+// These are the available line cap styles.
 const (
 	LC_ButtCap   LineCapStyle = 0
 	LC_RoundCap               = 1
 	LC_SquareCap              = 2
 )
 
+// LineJoinStyle describes the types of line joins available.
 type LineJoinStyle int32
 
+// These are the available line join styles.
 const (
 	LJ_MitreJoin LineJoinStyle = iota
 	LJ_RoundJoin
 	LJ_BevelJoin
 )
 
+// FontStyle defines the types of styles available for fonts.
 type FontStyle int32
 
+// The font styles available.
 const (
 	FS_Regular FontStyle = 0
 	FS_Bold    FontStyle = 1
 	FS_Italic  FontStyle = 2
 )
 
+// Font is an interface describing a typeface used for
+// drawing text.
+//
+// Id returns the identifier assigned by the document
+// to the font.
+//
+// Style returns the style of the font.
+//
+// Size returns the size of the font in the current page
+// unit.
 type Font interface {
 	Id() int
 	Style() FontStyle
 	Size() float64
 }
 
+// Image is an interface that describes a bitmap that
+// can be drawn on a page.
+//
+// Id returns am identifier assigned by the document
+// to this image.
+//
+// Width returns the width of the image in pixels.
+//
+// Height returns the height of the image in pixels.
 type Image interface {
 	Id() int
 	Width() int
 	Height() int
 }
 
+// PathCmdType describes the types of drawing operations
+// supported by Paths.
 type PathCmdType uint8
 
+// The types of drawing operations.
 const (
 	MoveCmdType  PathCmdType = 0xFF
 	LineCmdType              = 0xFE
@@ -95,10 +151,14 @@ const (
 	CloseCmdType             = 0xFA
 )
 
+// Path describes a series of drawing commands such
+// as lines, arcs and rectangles that can be stroked
+// or filled.
 type Path struct {
 	elements []byte
 }
 
+// NewPath constructs a new Path object.
 func NewPath() *Path {
 	return &Path{make([]byte, 0, 16)}
 }
@@ -131,18 +191,23 @@ func (path *Path) writeFloat64(val float64) {
 	}
 }
 
+// Move moves the drawing cursor to the supplied position.
 func (path *Path) Move(to Point) {
 	path.writeCmdType(MoveCmdType)
 	path.writeFloat64(to.X)
 	path.writeFloat64(to.Y)
 }
 
+// Line draws a line from the current cursor position to 
+// the new position.
 func (path *Path) Line(to Point) {
 	path.writeCmdType(LineCmdType)
 	path.writeFloat64(to.X)
 	path.writeFloat64(to.Y)
 }
 
+// Curve adds a bezier curve to the Path. The current position
+// of the drawing cursor is the start of the curve.
 func (path *Path) Curve(control1 Point, control2 Point, to Point) {
 	path.writeCmdType(CurveCmdType)
 	path.writeFloat64(control1.X)
@@ -153,6 +218,7 @@ func (path *Path) Curve(control1 Point, control2 Point, to Point) {
 	path.writeFloat64(to.Y)
 }
 
+// Rect adds a rectangle to the path.
 func (path *Path) Rect(from Point, to Point) {
 	path.writeCmdType(RectCmdType)
 	path.writeFloat64(from.X)
@@ -161,6 +227,9 @@ func (path *Path) Rect(from Point, to Point) {
 	path.writeFloat64(to.Y)
 }
 
+// Arc draws a an ellipse or partial ellipse centered on the supplied
+// point. Start and sweep are in radians and define where the arc
+// begins and how far it extends.
 func (path *Path) Arc(center Point, radius, start, sweep float64) {
 	path.writeCmdType(ArcCmdType)
 	path.writeFloat64(center.X)
@@ -170,14 +239,27 @@ func (path *Path) Arc(center Point, radius, start, sweep float64) {
 	path.writeFloat64(sweep)
 }
 
+// Close closes the path, drawing a line back to the starting position.
 func (path *Path) Close() {
 	path.writeCmdType(CloseCmdType)
 }
 
+// Reader returns an object used by Surface implementations to
+// enumerate the drawing operations included in the path.
 func (path *Path) Reader() PathReader {
 	return &pathReader{path.elements, 0}
 }
 
+// PathReader is an interface that allows an implementation
+// of Surface to enumerate the operations of a path.
+//
+// ReadCommandType reads the next operation from the path.
+//
+// ReadFloat64 reads a float64 from the path.
+//
+// ReadUint8 reads a uint8 from the path.
+//
+// Dump writes some debug info to stdout.
 type PathReader interface {
 	ReadCommandType() (cmdType PathCmdType, ok bool)
 	ReadFloat64() (val float64)
@@ -194,6 +276,7 @@ func (p *pathReader) ensureCap(n int) bool {
 	return p.pos+n <= len(p.elements)
 }
 
+// ReadCommandType reads the next operation from the path.
 func (p *pathReader) ReadCommandType() (cmdType PathCmdType, ok bool) {
 	ok = p.ensureCap(1)
 	if ok {
@@ -203,6 +286,7 @@ func (p *pathReader) ReadCommandType() (cmdType PathCmdType, ok bool) {
 	return
 }
 
+// ReadFloat64 reads a float64 from the path.
 func (p *pathReader) ReadFloat64() (val float64) {
 	if !p.ensureCap(8) {
 		panic("End of buffer!")
@@ -218,6 +302,7 @@ func (p *pathReader) ReadFloat64() (val float64) {
 	return
 }
 
+// ReadUint8 reads a uint8 from the path.
 func (p *pathReader) ReadUint8() (val uint8) {
 	if !p.ensureCap(1) {
 		panic("End of buffer!")
@@ -228,6 +313,7 @@ func (p *pathReader) ReadUint8() (val uint8) {
 	return val
 }
 
+// Dump writes some debug info to stdout.
 func (p *pathReader) Dump() {
 	for _, v := range p.elements {
 		fmt.Printf("%0x ", v)
@@ -235,6 +321,52 @@ func (p *pathReader) Dump() {
 	fmt.Println("")
 }
 
+// Surface defines operations for drawing text and
+// graphics on a page.
+//
+// PushState stores the current drawing state for
+// later recall.
+//
+// PopState discards the current drawing state and
+// recalls the previously pushed state.
+//
+// Rotate transforms the drawing surface by rotating
+// drawing operations by the supplied angle.
+//
+// Skew transforms the drawing surface by skewing 
+// drawing operations by the supplied angles.
+//
+// Translate transforms the drawing surface by 
+// translating the operations by the supplied distances.
+//
+// Scale transforms the drawing surface by scaling
+// operations by the supplied scales.
+//
+// Fg sets the color used to stroke paths.
+//
+// Bg sets the color used to fill paths.
+//
+// LineWidth sets the width of the lines uses for stroking
+// paths. The width is in the current page units.
+//
+// LineCap sets the style of the cap added to lines of
+// stroked paths.
+//
+// LineJoin sets the style of the joins between lines of a
+// stroked path.
+//
+// LinePattern sets the pattern to use when stroking lines
+// of a path. The pattern is in page units. Phase indicates
+// where in the pattern to begin drawing.
+//
+// Text draws a text string on the Surface.
+//
+// Image draws a bitmap image on the Surface.
+//
+// Stroke strokes a path in the Fg color using the current 
+// line width, joins and caps.
+//
+// Fill fills the area of a path with the current Bg color.
 type Surface interface {
 	PushState()
 	PopState()
@@ -256,5 +388,6 @@ type Surface interface {
 	Image(i Image, at Point, size Size)
 
 	Stroke(path *Path)
+
 	Fill(path *Path)
 }

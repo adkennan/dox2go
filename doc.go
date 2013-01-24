@@ -4,14 +4,18 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
+// dox2go is a library for generating documents.
 package dox2go
 
 import (
 	"image"
 )
 
+// PageSize defines one of the standard page sizes defined below.
 type PageSize int32
 
+// These are the standard page sizes dox2go recognizes.
 const (
 	PS_A0 PageSize = iota
 	PS_A1
@@ -48,6 +52,7 @@ var standardSizes = [15][2]float64{
 	{279, 432},  // Ledger/Tabloid
 }
 
+// StandardSize returns a page size in the requested units.
 func StandardSize(ps PageSize, unit Unit) Point {
 	if ps < 0 || int(ps) >= len(standardSizes) {
 		panic("Invalid Page Size")
@@ -65,13 +70,33 @@ func StandardSize(ps PageSize, unit Unit) Point {
 	}
 }
 
+// PageOrientation defines whether pages will be 
+// oriented in portrait or landscape.
 type PageOrientation int32
 
+// These are the available page orientations.
 const (
 	PO_Landscape PageOrientation = iota
 	PO_Portrait
 )
 
+// Document is the core interface of dox2go. It is responsible 
+// for managing reusable objects like images and fonts as well
+// as generating pages when requested.
+//
+// CreatePage constructs a new page object and adds it to 
+// the document.
+//
+// CreateFont generates a Font object based on the supplied
+// name, style and size. The name should be one of the 
+// standard PDF font names.
+//
+// CreateImage returns an object that can be used to draw
+// a bitmap on a document. The returned Image can be used
+// any number of times.
+//
+// Close is called when the document is complete and is
+// ready to be written to an output target.
 type Document interface {
 	CreatePage(pu Unit, size Point, po PageOrientation) Page
 
@@ -82,6 +107,11 @@ type Document interface {
 	Close() error
 }
 
+// Page is an interface that describes a page of a Document.
+//
+// Surface returns the drawing surface of the page.
+// Surface defines operations for drawing graphics and
+// text on the page.
 type Page interface {
 	Surface() Surface
 }

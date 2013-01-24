@@ -4,6 +4,7 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
 package pdf
 
 import (
@@ -211,6 +212,8 @@ type pdfDoc struct {
 	fonts    pdfTypeFaceList
 }
 
+// NewPdfDoc constructs a new Document object that 
+// writes PDF output.
 func NewPdfDoc(w io.Writer) dox2go.Document {
 
 	cat := &pdfCatalog{1, make([]pdfObj, 0, 4)}

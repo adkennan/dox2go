@@ -4,6 +4,8 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
+// Package pdf provides a pdf generator for dox2go.
 package pdf
 
 import (

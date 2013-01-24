@@ -4,10 +4,13 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
 package dox2go
 
+// Unit describes a unit of measurement.
 type Unit int32
 
+// Available measurement unit types.
 const (
 	U_PT Unit = 0
 	U_MM      = 1
@@ -23,6 +26,7 @@ var convMatrix = [4][4]float64{
 	{1.0 / 72.0, 0.0394, 0.394, 1.0},    // IN
 }
 
+// ConvetUnit converts a value from one unit to another.
 func ConvertUnit(val float64, from Unit, to Unit) float64 {
 	if from < 0 || int(from) >= len(convMatrix) || to < 0 || int(to) >= len(convMatrix) {
 		panic("Invalid Unit")

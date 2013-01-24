@@ -4,6 +4,7 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
 package pdf
 
 import (
@@ -11,6 +12,7 @@ import (
 	"io"
 )
 
+// Standard PDF fonts.
 const (
 	FONT_Times        string = "Times"
 	FONT_Helvetica           = "Helvetica"

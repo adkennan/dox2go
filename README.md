@@ -70,6 +70,6 @@ func main() {
 		return
 	}
 	n, err := b.WriteTo(f)
-	fmt.Printf("Write %d bytes\n", n)
+	fmt.Printf("Wrote %d bytes\n", n)
 }
 ```

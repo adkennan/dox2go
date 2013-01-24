@@ -4,6 +4,7 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
 package dox2go
 
 import (
@@ -11,6 +12,13 @@ import (
 	"io"
 )
 
+// Buffer us a reusable block of memory used as a temporary
+// workspace.
+// 
+// Write writes a slice of bytes to the buffer.
+//
+// WriteTo writes the contents of the buffer to the supplied
+// io.Writer.
 type Buffer interface {
 	Write(p []byte) (n int, err error)
 	WriteTo(w io.Writer) (n int64, err error)
@@ -51,19 +59,28 @@ func (p *pool) getBuffer() Buffer {
 	return b
 }
 
+// BufferPool maintains a collection of reusable Buffers.
+// 
+// Callers request a buffer of a given category and then
+// return it to the pool once they are done with it.
 type BufferPool struct {
 	pools map[int]*pool
 }
 
+// CreateCategory adds a category of buffer such as "small" or "large".
 func (bp *BufferPool) CreateCategory(category int, minBufferSize int) {
 	bp.pools[category] = &pool{minBufferSize, make([]*buffer, 0, 1)}
 }
 
+// GetBuffer returns a buffer of the requested category. If no free
+// buffers of the requested categories are available a new buffer 
+// will be allocated.
 func (bp *BufferPool) GetBuffer(category int) Buffer {
 
 	return bp.pools[category].getBuffer()
 }
 
+// FreeBuffer returns a buffer to the pool, allowing other callers to use it.
 func (bp *BufferPool) FreeBuffer(w Buffer) {
 
 	if b, ok := w.(*buffer); ok {
@@ -76,6 +93,7 @@ func (bp *BufferPool) FreeBuffer(w Buffer) {
 	}
 }
 
+// NewBufferPool constructs a new buffer pool.
 func NewBufferPool() *BufferPool {
 	return &BufferPool{make(map[int]*pool)}
 }

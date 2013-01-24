@@ -4,6 +4,7 @@
 * Copyright 2013 Andrew Kennan. All rights reserved.
 *
  */
+
 package pdf
 
 import (
