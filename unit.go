@@ -8,14 +8,14 @@
 package dox2go
 
 // Unit describes a unit of measurement.
-type Unit int32
+type PageUnit int32
 
 // Available measurement unit types.
 const (
-	U_PT Unit = 0
-	U_MM      = 1
-	U_CM      = 2
-	U_IN      = 3
+	U_PT PageUnit = 0
+	U_MM          = 1
+	U_CM          = 2
+	U_IN          = 3
 )
 
 //       PT            MM          CM            IN
@@ -27,7 +27,7 @@ var convMatrix = [4][4]float64{
 }
 
 // ConvetUnit converts a value from one unit to another.
-func ConvertUnit(val float64, from Unit, to Unit) float64 {
+func ConvertUnit(val float64, from PageUnit, to PageUnit) float64 {
 	if from < 0 || int(from) >= len(convMatrix) || to < 0 || int(to) >= len(convMatrix) {
 		panic("Invalid Unit")
 	}

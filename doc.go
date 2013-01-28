@@ -53,7 +53,7 @@ var standardSizes = [15][2]float64{
 }
 
 // StandardSize returns a page size in the requested units.
-func StandardSize(ps PageSize, unit Unit) Point {
+func StandardSize(ps PageSize, unit PageUnit) (float64, float64) {
 	if ps < 0 || int(ps) >= len(standardSizes) {
 		panic("Invalid Page Size")
 	}
@@ -61,13 +61,11 @@ func StandardSize(ps PageSize, unit Unit) Point {
 	var s = standardSizes[ps]
 
 	if unit == U_MM {
-		return Point{s[0], s[1]}
+		return s[0], s[1]
 	}
 
-	return Point{
-		ConvertUnit(s[0], U_MM, unit),
-		ConvertUnit(s[1], U_MM, unit),
-	}
+	return ConvertUnit(s[0], U_MM, unit),
+		ConvertUnit(s[1], U_MM, unit)
 }
 
 // PageOrientation defines whether pages will be 
@@ -98,7 +96,7 @@ const (
 // Close is called when the document is complete and is
 // ready to be written to an output target.
 type Document interface {
-	CreatePage(pu Unit, size Point, po PageOrientation) Page
+	CreatePage(pu PageUnit, width, height float64, po PageOrientation) Page
 
 	CreateFont(name string, fs FontStyle, size float64) Font
 

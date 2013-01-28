@@ -14,9 +14,10 @@ import (
 
 type pdfPage struct {
 	id     int
-	size   dox2go.Point
+	w      float64
+	h      float64
 	po     dox2go.PageOrientation
-	pu     dox2go.Unit
+	pu     dox2go.PageUnit
 	parent pdfObj
 	sfc    *pdfSurface
 	c      *pdfContent
@@ -46,11 +47,11 @@ func (p *pdfPage) WriteTo(w io.Writer) (n int64, err error) {
 	var height float64
 
 	if p.po == dox2go.PO_Portrait {
-		width = p.size.X
-		height = p.size.Y
+		width = p.w
+		height = p.h
 	} else {
-		width = p.size.Y
-		height = p.size.X
+		width = p.h
+		height = p.w
 	}
 
 	dw := dictionaryWriter{w, 0, nil}

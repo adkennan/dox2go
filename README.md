@@ -1,4 +1,4 @@
-dox2go
+dox2go`
 ======
 
 Dox2Go is a Go library for generating documents in a variety of formats. 

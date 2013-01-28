@@ -247,10 +247,10 @@ func NewPdfDoc(w io.Writer) dox2go.Document {
 	return doc
 }
 
-func (doc *pdfDoc) CreatePage(pu dox2go.Unit, size dox2go.Point, po dox2go.PageOrientation) dox2go.Page {
+func (doc *pdfDoc) CreatePage(pu dox2go.PageUnit, w, h float64, po dox2go.PageOrientation) dox2go.Page {
 	p := &pdfPage{
 		len(doc.objs) + 1,
-		size,
+		w, h,
 		po,
 		pu,
 		doc.pages,

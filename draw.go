@@ -12,42 +12,6 @@ import (
 	"math"
 )
 
-// Point describes a position in a 2-dimensional plane.
-//
-// X is the horizontal coordinate.
-//
-// Y is the vertical coordinate.
-type Point struct {
-	X float64
-	Y float64
-}
-
-// ChangeUnit returns a new Point with its coordinates
-// converted to a different unit.
-func (p *Point) ChangeUnit(from Unit, to Unit) Point {
-	return Point{
-		ConvertUnit(p.X, from, to),
-		ConvertUnit(p.Y, from, to)}
-}
-
-// Size describes a size in a 2-dimensional plane.
-//
-// W is the width of the size.
-//
-// H is the height of the size.
-type Size struct {
-	W float64
-	H float64
-}
-
-// ChangeUnit returns a new Size with its dimensions
-// onverted to a different unit.
-func (s *Size) ChangeUnit(from Unit, to Unit) Size {
-	return Size{
-		ConvertUnit(s.W, from, to),
-		ConvertUnit(s.H, from, to)}
-}
-
 // Color describes a color with red, green and blue
 // components as well as a transparency level.
 //
@@ -171,13 +135,9 @@ func (path *Path) ensureCap(n int) {
 	}
 }
 
-func (path *Path) writeUint8(val uint8) {
-	path.ensureCap(1)
-	path.elements = append(path.elements, val)
-}
-
 func (path *Path) writeCmdType(val PathCmdType) {
-	path.writeUint8(uint8(val))
+	path.ensureCap(1)
+	path.elements = append(path.elements, uint8(val))
 }
 
 func (path *Path) writeFloat64(val float64) {
@@ -192,48 +152,48 @@ func (path *Path) writeFloat64(val float64) {
 }
 
 // Move moves the drawing cursor to the supplied position.
-func (path *Path) Move(to Point) {
+func (path *Path) Move(x, y float64) {
 	path.writeCmdType(MoveCmdType)
-	path.writeFloat64(to.X)
-	path.writeFloat64(to.Y)
+	path.writeFloat64(x)
+	path.writeFloat64(y)
 }
 
 // Line draws a line from the current cursor position to 
 // the new position.
-func (path *Path) Line(to Point) {
+func (path *Path) Line(x, y float64) {
 	path.writeCmdType(LineCmdType)
-	path.writeFloat64(to.X)
-	path.writeFloat64(to.Y)
+	path.writeFloat64(x)
+	path.writeFloat64(y)
 }
 
 // Curve adds a bezier curve to the Path. The current position
 // of the drawing cursor is the start of the curve.
-func (path *Path) Curve(control1 Point, control2 Point, to Point) {
+func (path *Path) Curve(cx1, cy1, cx2, cy2, x, y float64) {
 	path.writeCmdType(CurveCmdType)
-	path.writeFloat64(control1.X)
-	path.writeFloat64(control1.Y)
-	path.writeFloat64(control2.X)
-	path.writeFloat64(control2.Y)
-	path.writeFloat64(to.X)
-	path.writeFloat64(to.Y)
+	path.writeFloat64(cx1)
+	path.writeFloat64(cy1)
+	path.writeFloat64(cx2)
+	path.writeFloat64(cy2)
+	path.writeFloat64(x)
+	path.writeFloat64(y)
 }
 
 // Rect adds a rectangle to the path.
-func (path *Path) Rect(from Point, to Point) {
+func (path *Path) Rect(x1, y1, x2, y2 float64) {
 	path.writeCmdType(RectCmdType)
-	path.writeFloat64(from.X)
-	path.writeFloat64(from.Y)
-	path.writeFloat64(to.X)
-	path.writeFloat64(to.Y)
+	path.writeFloat64(x1)
+	path.writeFloat64(y1)
+	path.writeFloat64(x2)
+	path.writeFloat64(y2)
 }
 
 // Arc draws a an ellipse or partial ellipse centered on the supplied
 // point. Start and sweep are in radians and define where the arc
 // begins and how far it extends.
-func (path *Path) Arc(center Point, radius, start, sweep float64) {
+func (path *Path) Arc(x, y float64, radius, start, sweep float64) {
 	path.writeCmdType(ArcCmdType)
-	path.writeFloat64(center.X)
-	path.writeFloat64(center.Y)
+	path.writeFloat64(x)
+	path.writeFloat64(y)
 	path.writeFloat64(radius)
 	path.writeFloat64(start)
 	path.writeFloat64(sweep)
@@ -263,7 +223,6 @@ func (path *Path) Reader() PathReader {
 type PathReader interface {
 	ReadCommandType() (cmdType PathCmdType, ok bool)
 	ReadFloat64() (val float64)
-	ReadUint8() (val uint8)
 	Dump()
 }
 
@@ -300,17 +259,6 @@ func (p *pathReader) ReadFloat64() (val float64) {
 	val = math.Float64frombits(bits)
 	p.pos += 8
 	return
-}
-
-// ReadUint8 reads a uint8 from the path.
-func (p *pathReader) ReadUint8() (val uint8) {
-	if !p.ensureCap(1) {
-		panic("End of buffer!")
-	}
-
-	val = p.elements[p.pos]
-	p.pos++
-	return val
 }
 
 // Dump writes some debug info to stdout.
@@ -373,7 +321,7 @@ type Surface interface {
 
 	Rotate(byRadians float64)
 	Skew(xRadians float64, yRadians float64)
-	Translate(byDistance Point)
+	Translate(x, y float64)
 	Scale(xScale float64, yScale float64)
 
 	Fg(color Color)
@@ -383,9 +331,9 @@ type Surface interface {
 	LineJoin(joinStyle LineJoinStyle)
 	LinePattern(pattern []float64, phase float64)
 
-	Text(f Font, at Point, text string)
+	Text(f Font, x, y float64, text string)
 
-	Image(i Image, at Point, size Size)
+	Image(i Image, x, y, w, h float64)
 
 	Stroke(path *Path)
 

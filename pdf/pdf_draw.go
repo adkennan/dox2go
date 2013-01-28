@@ -18,7 +18,7 @@ import (
 
 type pdfSurface struct {
 	w        io.Writer
-	u        d2g.Unit
+	u        d2g.PageUnit
 	inText   bool
 	fonts    []*pdfTypeFace
 	lastFont *pdfFont
@@ -67,11 +67,11 @@ func (sfc *pdfSurface) Rotate(byRadians float64) {
 	sfc.alterMatrix(c, s, -s, c, 0, 0)
 }
 
-func (sfc *pdfSurface) Translate(byDistance d2g.Point) {
+func (sfc *pdfSurface) Translate(x, y float64) {
 
 	sfc.alterMatrix(1, 0, 0, 1,
-		d2g.ConvertUnit(byDistance.X, sfc.u, d2g.U_PT),
-		d2g.ConvertUnit(byDistance.Y, sfc.u, d2g.U_PT))
+		d2g.ConvertUnit(x, sfc.u, d2g.U_PT),
+		d2g.ConvertUnit(y, sfc.u, d2g.U_PT))
 }
 
 func (sfc *pdfSurface) Skew(xRadians float64, yRadians float64) {
@@ -151,7 +151,7 @@ var escapedChars = [8]byte{
 
 const escapeChar = byte('\\')
 
-func (sfc *pdfSurface) Text(f d2g.Font, at d2g.Point, text string) {
+func (sfc *pdfSurface) Text(f d2g.Font, x, y float64, text string) {
 
 	if pf, ok := f.(*pdfFont); ok {
 
@@ -171,8 +171,8 @@ func (sfc *pdfSurface) Text(f d2g.Font, at d2g.Point, text string) {
 		}
 
 		fmt.Fprintf(sfc.w, "%f %f Td\r\n(",
-			d2g.ConvertUnit(at.X, sfc.u, d2g.U_PT),
-			d2g.ConvertUnit(at.Y, sfc.u, d2g.U_PT))
+			d2g.ConvertUnit(x, sfc.u, d2g.U_PT),
+			d2g.ConvertUnit(y, sfc.u, d2g.U_PT))
 
 		textBuf := new(bytes.Buffer)
 
@@ -198,15 +198,15 @@ func (sfc *pdfSurface) Text(f d2g.Font, at d2g.Point, text string) {
 	}
 }
 
-func (sfc *pdfSurface) Image(i d2g.Image, at d2g.Point, size d2g.Size) {
+func (sfc *pdfSurface) Image(i d2g.Image, x, y, w, h float64) {
 
 	sfc.endText()
 
 	if pi, ok := i.(*pdfImage); ok {
 
 		sfc.PushState()
-		sfc.Translate(at)
-		sfc.Scale(size.W, size.H)
+		sfc.Translate(x, y)
+		sfc.Scale(w, h)
 
 		name := sfc.addXObj(pi)
 
@@ -296,12 +296,6 @@ func (sfc *pdfSurface) writeCurve(x1, y1, x2, y2, x3, y3 float64) {
 	fmt.Fprintf(sfc.w, "%f %f %f %f %f %f c\r\n",
 		x1, y1, x2, y2, x3, y3)
 }
-
-// Approximate a circular arc using multiple
-// c`ubic Bézier curves, one for each π/2 segment.
-//
-// This is from:
-//      http://hansmuller-flex.blogspot.com/2011/04/approximating-circular-arc-with-cubic.html
 
 /*
 // Approximate a circular arc using multiple

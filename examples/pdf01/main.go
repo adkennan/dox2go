@@ -22,16 +22,16 @@ func main() {
 
 	doc := pdf.NewPdfDoc(&b)
 
-	page := doc.CreatePage(dox2go.U_MM,
-		dox2go.StandardSize(dox2go.PS_A4, dox2go.U_MM),
-		dox2go.PO_Portrait)
+	w, h := dox2go.StandardSize(dox2go.PS_A4, dox2go.U_MM)
+
+	page := doc.CreatePage(dox2go.U_MM, w, h, dox2go.PO_Portrait)
 
 	s := page.Surface()
 
 	s.LineWidth(2.0)
 
 	p := dox2go.NewPath()
-	p.Arc(dox2go.Point{110, 150}, 25, 0, math.Pi*2)
+	p.Arc(110, 150, 25, 0, math.Pi*2)
 	p.Close()
 	s.Fg(dox2go.RGB(0, 0, 0))
 	s.Stroke(p)
@@ -39,13 +39,13 @@ func main() {
 	s.Fill(p)
 
 	p = dox2go.NewPath()
-	p.Move(dox2go.Point{99, 158})
-	p.Arc(dox2go.Point{97, 158}, 2, 0, math.Pi*2)
-	p.Move(dox2go.Point{125, 158})
-	p.Arc(dox2go.Point{123, 158}, 2, 0, math.Pi*2)
+	p.Move(99, 158)
+	p.Arc(97, 158, 2, 0, math.Pi*2)
+	p.Move(125, 158)
+	p.Arc(123, 158, 2, 0, math.Pi*2)
 
-	p.Move(dox2go.Point{97, 140})
-	p.Curve(dox2go.Point{105, 130}, dox2go.Point{115, 130}, dox2go.Point{123, 140})
+	p.Move(97, 140)
+	p.Curve(105, 130, 115, 130, 123, 140)
 	p.Close()
 
 	s.Bg(dox2go.RGB(255, 255, 255))
@@ -54,7 +54,7 @@ func main() {
 
 	font := doc.CreateFont(pdf.FONT_Helvetica, dox2go.FS_Bold, 20)
 	s.Bg(dox2go.RGB(0, 0, 0))
-	s.Text(font, dox2go.Point{50, 100}, "Hello World!")
+	s.Text(font, 50, 100, "Hello World!")
 
 	doc.Close()
 
