@@ -9,11 +9,12 @@ package pdf
 
 import (
 	"bytes"
-	d2g "dox2go"
 	"fmt"
 	"io"
 	"math"
 	"strconv"
+
+	d2g "github.com/adkennan/dox2go"
 )
 
 type pdfSurface struct {

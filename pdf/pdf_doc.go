@@ -9,10 +9,11 @@ package pdf
 
 import (
 	"bytes"
-	"dox2go"
 	"fmt"
 	"image"
 	"io"
+
+	"github.com/adkennan/dox2go"
 )
 
 ///////////////////////////////////////////////////////////
@@ -212,7 +213,7 @@ type pdfDoc struct {
 	fonts    pdfTypeFaceList
 }
 
-// NewPdfDoc constructs a new Document object that 
+// NewPdfDoc constructs a new Document object that
 // writes PDF output.
 func NewPdfDoc(w io.Writer) dox2go.Document {
 
