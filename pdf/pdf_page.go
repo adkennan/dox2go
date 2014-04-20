@@ -8,8 +8,9 @@
 package pdf
 
 import (
-	"dox2go"
 	"io"
+
+	"github.com/adkennan/dox2go"
 )
 
 type pdfPage struct {
